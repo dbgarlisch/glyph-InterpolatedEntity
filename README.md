@@ -19,20 +19,31 @@ Basic usage example.
 
 ```Tcl
   Debug setVerbose 1 ;# enable debug messages
+  set createPts 0
 
-  # $ent refers to an exisiting structured con/dom/blk entity
-  # $refEnt provides access to an interpolated grid with a 3x cell density
-  set refEnt [pw::RefinedEntity new $ent 3]
-  puts "$refEnt getEnt            = [$refEnt getEnt]"
-  puts "$refEnt getMult           = [$refEnt getMult]"
-  puts "$refEnt getOrigDimensions = [$refEnt getOrigDimensions]"
-  puts "$refEnt getDimensions     = [$refEnt getDimensions]"
+  # $sblk refers to an exisiting structured block entity
+  # $refinedBlk provides access to an interpolated grid with a 3x cell density
+  set refEnt [pw::RefinedEntity new $sblk 3]
+  vputs "$refinedBlk getEnt            = [$refinedBlk getEnt]"
+  vputs "$refinedBlk getMult           = [$refinedBlk getMult]"
+  vputs "$refinedBlk getOrigDimensions = [$refinedBlk getOrigDimensions]"
+  vputs "$refinedBlk getDimensions     = [$refinedBlk getDimensions]"
 
-  # Creates db points at all refined XYZ locations.
-  # If debug is enabled, dumps info about $refEnt to stdout
-  $refEnt dump
+  lassign [$refinedBlk getDimensions] iDim jDim kDim
+  for {set ii 1} {$ii <= $iDim} {incr ii} {
+    for {set jj 1} {$jj <= $jDim} {incr jj} {
+      for {set kk 1} {$kk <= $kDim} {incr kk} {
+        set ndx [list $ii $jj $kk]
+        set xyz [$refinedBlk getXYZ $ndx]
+        puts "[list $ndx] ==> $xyz"
+        if { $createPts } {
+          [pw::Point create] setPoint $xyz
+        }
+      }
+    }
+  }
 
-  $refEnt delete
+  $refinedBlk delete
 ```
 
 See the [glyph-RefinedEntity Class Docs](docs/RefinedEntity.md) for full documentation.
