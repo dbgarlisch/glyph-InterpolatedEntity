@@ -1,6 +1,6 @@
-# tcl-RefinedEntity
+# pw::RefinedEntity
 
-Provides the *RefinedEntity* static and instance commands.
+Provides the *pw::RefinedEntity* static and instance commands.
 
 ### Table of Contents
 * [pw::RefinedEntity Static Commands](#pwrefinedentity-static-commands)
