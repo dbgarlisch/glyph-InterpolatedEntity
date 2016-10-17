@@ -9,7 +9,7 @@ DOCS ARE IN WORK - NOT VALID YET
   * [new](#pwrefinedentity-new)
 * [pw::RefinedEntity Instance Commands](#pwrefinedentity-instance-commands)
   * [getEnt](#refent-getent)
-  * [getMult](#refent-getMult)
+  * [getMult](#refent-getmult)
   * [getDimensionality](#refent-getdimensionality)
   * [getOrigDimensions](#refent-getorigdimensions)
   * [getDimensions](#refent-getdimensions)
