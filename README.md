@@ -1,6 +1,8 @@
 # glyph-RefinedEntity
 This glyph class wraps an existing structured grid entity and provides access to interpolated grid points.
 
+![RefinedEntity Banner Image](../master/docs/images/banner.png  "RefinedEntity banner Image")
+
 ## Depends On
 
 Project `tcl-Utils`
