@@ -5,72 +5,124 @@ Provides the *RefinedEntity* command ensemble.
 DOCS ARE IN WORK - NOT VALID YET
 
 ### Table of Contents
-* [Param Commands](#param-commands)
-  * [basetype](#param-basetype)
-  * [getBasetype](#param-getbasetype)
+* [pw::RefinedEntity Static Commands](#pw-refinedentity-static-commands)
+  * [new](#pw-refinedentity-new)
+* [pw::RefinedEntity Instance Commands](#pw-refinedentity-instance-commands)
+  * [getEnt](#pw-refinedentity-getEnt)
+  * [getMult](#pw-refinedentity-getMult)
+  * [getDimensionality](#pw-refinedentity-getDimensionality)
+  * [getOrigDimensions](#pw-refinedentity-getOrigDimensions)
+  * [getDimensions](#pw-refinedentity-getDimensions)
+  * [makeIndex](#pw-refinedentity-makeIndex)
+  * [delete](#pw-refinedentity-delete)
+  * [getXYZ](#pw-refinedentity-getXYZ)
+  * [dump](#pw-refinedentity-dump)
 * [Usage Examples](#usage-examples)
   * [Base Type Params](#base-type-params)
 
+## pw::RefinedEntity Static Commands
 
-## Param Commands
-
-Commands in this ensemble are accessed as:
+Commands in this ensemble are accessed as :
 
 ```Tcl
 pw::RefinedEntity <cmd> <options>
 ```
 Where,
 
-`cmd` - Is one of the Param command names listed below.
+`cmd` - Is one of the pw::RefinedEntity command names listed below.
 
 `options` - The cmd dependent options.
 
-
-### Param basetype
+### pw::RefinedEntity new
 ```Tcl
-Param basetype name ?vtorNamespace? ?replace?
+pw::RefinedEntity new ent mult
 ```
-Creates an application defined basetype. Returns nothing. See [Custom Base Types](CustomBaseTypes.md).
+Creates and returns a RefinedEntity object.
 
 where,
 
-`name` - The name of the base type being created. An error is triggered if `name` is not unique unless `replace` is set to 1.
+`ent` - A structured block, domain, or connector entity.
 
-`vtorNamespace` - The optional validator namespace. See [Validators](CustomBaseTypes.md#validators). (default `name`)
+`mult` - The cell multiplier.This determines the number of interpolated points.
 
-`replace` - If 1, any existing base type definition will be replaced with this one. (default 0)
 
-### Param getBasetype
+
+## pw::RefinedEntity Instance Commands
+
+Objects created by `pw::RefinedEntity new` support the following commands.
+
+### $refEnt getEnt
 ```tcl
-Param getBasetype typedefName
+$refEnt getEnt
 ```
-Returns the base type of a type definition.
+Returns the wrapped entity object.
+
+### $refEnt getMult
+```tcl
+$refEnt getMult
+```
+Returns the cell multiplier value.
+
+### $refEnt getDimensionality
+```tcl
+$refEnt getDimensionality
+```
+Returns the cell dimensionality of the wrapped entity.
+
+### $refEnt getOrigDimensions
+```tcl
+$refEnt getOrigDimensions
+```
+Returns the original (not multipled) IJK point dimensions of the wrapped entity.
+
+### $refEnt getDimensions
+```tcl
+$refEnt getDimensions
+```
+Returns the multipled IJK point dimensions of the wrapped entity.
+
+### $refEnt delete
+```tcl
+$refEnt delete
+```
+Destroys the RefinedEntity object. Returns nothing.
+
+### $refEnt getXYZ
+```tcl
+$refEnt getXYZ ndx
+```
+Returns the XYZ value at a requested grid index position.
 
 where,
 
-`typedefName` - The type definition name.
+`ndx` - A list containing the I (connectors), IJ (domains), or IJK (blocks) grid position index. The wrapped entity's dimensionality determines the minimum number of indices required. Any indices beyond the dimensionality are silently ignored. For example, an index of `$refEnt getXYZ {10 1 2}` for a wrapped connector is silently interpreted as `$refEnt getXYZ {10}`.
 
+### $refEnt dump
+```tcl
+$refEnt dump
+```
+Dumps various debug information to stdout.
 
 
 ## Usage Examples
 
-### Base Type Params
-Base types that support typedefs (see [VTOR::createTypedef_](CustomBaseTypes.md#validator-variables)) can be used
-for parameters. These parameters will have an unlimited range.
+### example 1
+Base types that support typedefs(see[VTOR::createTypedef_](CustomBaseTypes.md#validator - variables)) can be used
+for parameters.These parameters will have an unlimited range.
 ```
-set poi [Param new integer 33]
+set poi[pw::RefinedEntity new integer 33]
 $poi = 77
 
-set pod [Param new double 33.33]
+set pod[pw::RefinedEntity new double 33.33]
 $pod = 77.77
 
 # real is an alias of double
-set por [Param new real 44.55]
+set por[pw::RefinedEntity new real 44.55]
 $por = 66.88
 
-set pos [Param new string {hello}]
-$pos = {world!}
+set pos[pw::RefinedEntity new string{ hello }]
+$pos = { world!}
 
-# enum requires a range! It must be typedef'ed.
-set enum [Param new enum] ;# ERROR
+# enum requires a range!It must be typedef'ed.
+set enum[pw::RefinedEntity new enum]; # ERROR
 ```
