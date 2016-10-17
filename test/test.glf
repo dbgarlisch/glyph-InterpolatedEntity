@@ -62,15 +62,16 @@ proc getSelection { selectedVar } {
 
 
 proc main {} {
+  Debug setVerbose 0
   set ents []
   if { [getSelection ents] } {
     foreach ent $ents {
-      set refEnt [pw::RefinedEntity new $ent 3]
-      puts "---------"
-      puts "$refEnt getEnt = [$refEnt getEnt]"
-      puts "$refEnt getMult = [$refEnt getMult]"
-      puts "$refEnt getOrigDimensions = [$refEnt getOrigDimensions]"
-      puts "$refEnt getDimensions = [$refEnt getDimensions]"
+      set refEnt [pw::RefinedEntity new $ent 2]
+      Debug vputs "---------"
+      Debug vputs "$refEnt getEnt = [$refEnt getEnt]"
+      Debug vputs "$refEnt getMult = [$refEnt getMult]"
+      Debug vputs "$refEnt getOrigDimensions = [$refEnt getOrigDimensions]"
+      Debug vputs "$refEnt getDimensions = [$refEnt getDimensions]"
       $refEnt dump
       $refEnt delete
     }
