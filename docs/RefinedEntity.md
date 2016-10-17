@@ -1,8 +1,6 @@
 # tcl-RefinedEntity
 
-Provides the *RefinedEntity* command ensemble.
-
-DOCS ARE IN WORK - NOT VALID YET
+Provides the *RefinedEntity* static and instance commands.
 
 ### Table of Contents
 * [pw::RefinedEntity Static Commands](#pwrefinedentity-static-commands)
@@ -17,7 +15,7 @@ DOCS ARE IN WORK - NOT VALID YET
   * [getXYZ](#refent-getxyz)
   * [dump](#refent-dump)
 * [Usage Examples](#usage-examples)
-  * [Base Type Params](#base-type-params)
+  * [Example 1](#example-1)
 
 ## pw::RefinedEntity Static Commands
 
@@ -105,23 +103,33 @@ Dumps various debug information to stdout.
 
 ## Usage Examples
 
-### example 1
-Base types that support typedefs(see[VTOR::createTypedef_](CustomBaseTypes.md#validator - variables)) can be used
-for parameters.These parameters will have an unlimited range.
+### Example 1
+Basic Usage.
 ```
-set poi[pw::RefinedEntity new integer 33]
-$poi = 77
+Debug setVerbose 1 ;# enable debug messages
+set createPts 0
 
-set pod[pw::RefinedEntity new double 33.33]
-$pod = 77.77
+# $sblk refers to an exisiting structured block entity
+# $refinedBlk provides access to an interpolated grid with a 3x cell density
+set refEnt [pw::RefinedEntity new $sblk 3]
+vputs "$refinedBlk getEnt            = [$refinedBlk getEnt]"
+vputs "$refinedBlk getMult           = [$refinedBlk getMult]"
+vputs "$refinedBlk getOrigDimensions = [$refinedBlk getOrigDimensions]"
+vputs "$refinedBlk getDimensions     = [$refinedBlk getDimensions]"
 
-# real is an alias of double
-set por[pw::RefinedEntity new real 44.55]
-$por = 66.88
+lassign [$refinedBlk getDimensions] iDim jDim kDim
+for {set ii 1} {$ii <= $iDim} {incr ii} {
+  for {set jj 1} {$jj <= $jDim} {incr jj} {
+    for {set kk 1} {$kk <= $kDim} {incr kk} {
+      set ndx [list $ii $jj $kk]
+      set xyz [$refinedBlk getXYZ $ndx]
+      puts "[list $ndx] ==> $xyz"
+      if { $createPts } {
+        [pw::Point create] setPoint $xyz
+      }
+    }
+  }
+}
 
-set pos[pw::RefinedEntity new string{ hello }]
-$pos = { world!}
-
-# enum requires a range!It must be typedef'ed.
-set enum[pw::RefinedEntity new enum]; # ERROR
+$refinedBlk delete
 ```
