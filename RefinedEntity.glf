@@ -131,11 +131,6 @@ namespace eval ::pw::RefinedEntity {
       return $ret
     }
 
-    public proc makeIndex { args } {
-      variable dimty_
-      return [lrange "X [join $args { }] 1 1 1" 1 $dimty_]
-    }
-
     public proc delete {} {
       variable self_
       namespace delete $self_
