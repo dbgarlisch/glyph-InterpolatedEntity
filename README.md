@@ -1,7 +1,7 @@
-# glyph-RefinedEntity
+# glyph-InterpolatedEntity
 This glyph class wraps an existing structured grid entity and provides access to interpolated grid points.
 
-![RefinedEntity Banner Image](../master/docs/images/banner.png  "RefinedEntity banner Image")
+![InterpolatedEntity Banner Image](../master/docs/images/banner.png  "InterpolatedEntity banner Image")
 
 ## Depends On
 
@@ -11,10 +11,10 @@ Project `tcl-Utils`
 ## Using The Library
 
 To use this class to wrap an existing structured grid entity, you must include
-`RefinedEntity.glf` in your application script.
+`InterpolatedEntity.glf` in your application script.
 
 ```Tcl
-  source "/some/path/to/your/copy/of/RefinedEntity.glf"
+  source "/some/path/to/your/copy/of/InterpolatedEntity.glf"
 ```
 
 Basic usage example.
@@ -25,7 +25,7 @@ Basic usage example.
 
   # $sblk refers to an exisiting structured block entity
   # $refinedBlk provides access to an interpolated grid with a 3x cell density
-  set refEnt [pw::RefinedEntity new $sblk 3]
+  set refEnt [pw::InterpolatedEntity new $sblk 3]
   vputs "$refinedBlk getEnt            = [$refinedBlk getEnt]"
   vputs "$refinedBlk getMult           = [$refinedBlk getMult]"
   vputs "$refinedBlk getOrigDimensions = [$refinedBlk getOrigDimensions]"
@@ -48,4 +48,4 @@ Basic usage example.
   $refinedBlk delete
 ```
 
-See the [glyph-RefinedEntity Class Docs](docs/RefinedEntity.md) for full documentation.
+See the [glyph-InterpolatedEntity Class Docs](docs/InterpolatedEntity.md) for full documentation.
