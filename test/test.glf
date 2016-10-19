@@ -9,7 +9,7 @@
 
 package require PWI_Glyph
 
-source [file join [file dirname [info script]] .. RefinedEntity.glf]
+source [file join [file dirname [info script]] .. InterpolatedEntity.glf]
 
 
 proc getMask {} {
@@ -66,14 +66,14 @@ proc main {} {
   set ents []
   if { [getSelection ents] } {
     foreach ent $ents {
-      set refEnt [pw::RefinedEntity new $ent 2]
+      set intpEnt [pw::InterpolatedEntity new $ent 2]
       Debug vputs "---------"
-      Debug vputs "$refEnt getEnt = [$refEnt getEnt]"
-      Debug vputs "$refEnt getMult = [$refEnt getMult]"
-      Debug vputs "$refEnt getOrigDimensions = [$refEnt getOrigDimensions]"
-      Debug vputs "$refEnt getDimensions = [$refEnt getDimensions]"
-      $refEnt dump
-      $refEnt delete
+      Debug vputs "$intpEnt getEnt = [$intpEnt getEnt]"
+      Debug vputs "$intpEnt getMult = [$intpEnt getMult]"
+      Debug vputs "$intpEnt getOrigDimensions = [$intpEnt getOrigDimensions]"
+      Debug vputs "$intpEnt getDimensions = [$intpEnt getDimensions]"
+      $intpEnt dump
+      $intpEnt delete
     }
   }
 }
