@@ -1,11 +1,11 @@
-# pw::RefinedEntity
+# pw::InterpolatedEntity
 
-Provides the *pw::RefinedEntity* static and instance commands.
+Provides the *pw::InterpolatedEntity* static and instance commands.
 
 ### Table of Contents
-* [pw::RefinedEntity Static Commands](#pwrefinedentity-static-commands)
+* [pw::InterpolatedEntity Static Commands](#pwrefinedentity-static-commands)
   * [new](#pwrefinedentity-new)
-* [pw::RefinedEntity Instance Commands](#pwrefinedentity-instance-commands)
+* [pw::InterpolatedEntity Instance Commands](#pwrefinedentity-instance-commands)
   * [getEnt](#refent-getent)
   * [getMult](#refent-getmult)
   * [getDimensionality](#refent-getdimensionality)
@@ -17,24 +17,24 @@ Provides the *pw::RefinedEntity* static and instance commands.
 * [Usage Examples](#usage-examples)
   * [Example 1](#example-1)
 
-## pw::RefinedEntity Static Commands
+## pw::InterpolatedEntity Static Commands
 
 Commands in this ensemble are accessed as :
 
 ```Tcl
-pw::RefinedEntity <cmd> <options>
+pw::InterpolatedEntity <cmd> <options>
 ```
 Where,
 
-`cmd` - Is one of the pw::RefinedEntity command names listed below.
+`cmd` - Is one of the pw::InterpolatedEntity command names listed below.
 
 `options` - The cmd dependent options.
 
-### pw::RefinedEntity new
+### pw::InterpolatedEntity new
 ```Tcl
-pw::RefinedEntity new ent mult
+pw::InterpolatedEntity new ent mult
 ```
-Creates and returns a RefinedEntity object.
+Creates and returns a InterpolatedEntity object.
 
 where,
 
@@ -44,9 +44,9 @@ where,
 
 
 
-## pw::RefinedEntity Instance Commands
+## pw::InterpolatedEntity Instance Commands
 
-Objects created by `pw::RefinedEntity new` support the following commands.
+Objects created by `pw::InterpolatedEntity new` support the following commands.
 
 ### $refEnt getEnt
 ```tcl
@@ -82,7 +82,7 @@ Returns the multipled IJK point dimensions of the wrapped entity.
 ```tcl
 $refEnt delete
 ```
-Destroys the RefinedEntity object. Returns nothing.
+Destroys the InterpolatedEntity object. Returns nothing.
 
 ### $refEnt getXYZ
 ```tcl
@@ -111,7 +111,7 @@ set createPts 0
 
 # $sblk refers to an exisiting structured block entity
 # $refinedBlk provides access to an interpolated grid with a 3x cell density
-set refEnt [pw::RefinedEntity new $sblk 3]
+set refEnt [pw::InterpolatedEntity new $sblk 3]
 vputs "$refinedBlk getEnt            = [$refinedBlk getEnt]"
 vputs "$refinedBlk getMult           = [$refinedBlk getMult]"
 vputs "$refinedBlk getOrigDimensions = [$refinedBlk getOrigDimensions]"
