@@ -155,7 +155,6 @@ namespace eval ::pw::InterpolatedEntity {
       true { set useCache_ 1 }
       default { return -code error "Invalid boolean value '$onOff'" }
       }
-      puts "setXyzCaching $onOff ==> useCache_=$useCache_"
     }
 
     public proc delete {} {
@@ -188,10 +187,19 @@ namespace eval ::pw::InterpolatedEntity {
       variable useCache_
       upvar $xyzVar xyz
       if { $useCache_ && ![catch {dict get $cache_ $ndx} xyz] } {
-        set ret 1
-      } else {
-        set xyz {}
-        set ret 0
+        puts [format "Using %-10.10s ==> %s" $ndx $xyz]
+        return 1
+      }
+      set xyz {}
+      return 0
+    }
+
+    private proc addCachedXyz { ndx xyz } {
+      variable cache_
+      variable useCache_
+      if { $useCache_ } {
+        puts [format "Cache %-10.10s ==> %s" $ndx $xyz]
+        dict set cache_ $ndx $xyz
       }
     }
 
@@ -221,8 +229,7 @@ namespace eval ::pw::InterpolatedEntity {
       } elseif { ![getCachedXyz $ndx ret] } {
         # Must interpolate xyz
         set ret [pwu::Vector3 affine $s [$ent_ getXYZ -grid $origI1] [$ent_ getXYZ -grid $origI2]]
-        variable cache_
-        dict set cache_ $ndx $ret
+        addCachedXyz $ndx $ret
       }
       return $ret
     }
@@ -236,7 +243,6 @@ namespace eval ::pw::InterpolatedEntity {
         Debug vputs [format "  $ii ==> [${self_}::getOrigBracket $ii s] @ %5.3f ==> %s" $s $xyz]
         [pw::Point create] setPoint $xyz
       }
-      dumpXyzCache
     }
   }
 
@@ -257,19 +263,35 @@ namespace eval ::pw::InterpolatedEntity {
         # return cached value
       } elseif { $origI1 == $origI2 } {
         # Along original J edge, Interpolate xyz between origJ1 and origJ2
-        set ret [pwu::Vector3 affine $sJ [$ent_ getXYZ -grid [list $origI1 $origJ1]] [$ent_ getXYZ -grid [list $origI1 $origJ2]]]
-        dict set cache_ $ndx $ret
+        set ret [pwu::Vector3 affine $sJ [$ent_ getXYZ -grid [list $origI1 $origJ1]] \
+                                         [$ent_ getXYZ -grid [list $origI1 $origJ2]]]
+        addCachedXyz $ndx $ret
       } elseif { $origJ1 == $origJ2 } {
         # Along original I edge, Interpolate xyz between origI1 and origI2
-        set ret [pwu::Vector3 affine $sI [$ent_ getXYZ -grid [list $origI1 $origJ1]] [$ent_ getXYZ -grid [list $origI2 $origJ1]]]
-        dict set cache_ $ndx $ret
+        set ret [pwu::Vector3 affine $sI [$ent_ getXYZ -grid [list $origI1 $origJ1]] \
+                                         [$ent_ getXYZ -grid [list $origI2 $origJ1]]]
+        addCachedXyz $ndx $ret
       } else {
-        set ret [::pw::InterpolatedEntity::interpolateQuad \
-                  [$ent_ getXYZ -grid [list $origI1 $origJ1]] \
-                  [$ent_ getXYZ -grid [list $origI2 $origJ1]] \
-                  [$ent_ getXYZ -grid [list $origI2 $origJ2]] \
-                  [$ent_ getXYZ -grid [list $origI1 $origJ2]] $sI $sJ]
-        dict set cache_ $ndx $ret
+        if { ![getCachedXyz [list $i $origJ1] J1xyz] } {
+          set J1xyz [pwu::Vector3 affine $sI [$ent_ getXYZ -grid [list $origI1 $origJ1]] \
+                                             [$ent_ getXYZ -grid [list $origI2 $origJ1]]]
+          addCachedXyz [list $i $origJ1] $J1xyz
+        }
+        if { ![getCachedXyz [list $i $origJ2] J2xyz] } {
+          set J2xyz [pwu::Vector3 affine $sI [$ent_ getXYZ -grid [list $origI1 $origJ2]] \
+                                             [$ent_ getXYZ -grid [list $origI2 $origJ2]]]
+          addCachedXyz [list $i $origJ2] $J2xyz
+        }
+        set ret [pwu::Vector3 affine $sJ $J1xyz $J2xyz]
+        #set I1xyz [getXYZ [list $origI1 $j]]
+        #set I2xyz [getXYZ [list $origI2 $j]]
+        #set ret [pwu::Vector3 affine $sI $I1xyz $I2xyz]
+        #set ret [::pw::InterpolatedEntity::interpolateQuad \
+        #          [$ent_ getXYZ -grid [list $origI1 $origJ1]] \
+        #          [$ent_ getXYZ -grid [list $origI2 $origJ1]] \
+        #          [$ent_ getXYZ -grid [list $origI2 $origJ2]] \
+        #          [$ent_ getXYZ -grid [list $origI1 $origJ2]] $sI $sJ]
+        addCachedXyz $ndx $ret
       }
       return $ret
     }
@@ -290,7 +312,6 @@ namespace eval ::pw::InterpolatedEntity {
           [pw::Point create] setPoint $xyz
         }
       }
-      dumpXyzCache
     }
   }
 
@@ -313,15 +334,15 @@ namespace eval ::pw::InterpolatedEntity {
       } elseif { $origI1 == $origI2 && $origJ1 == $origJ2 } {
         # Along original K edge, Interpolate xyz between origK1 and origK2
         set ret [pwu::Vector3 affine $sK [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]] [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK2]]]
-        dict set cache_ $ndx $ret
+        addCachedXyz $ndx $ret
       } elseif { $origI1 == $origI2 && $origK1 == $origK2 } {
         # Along original J edge, Interpolate xyz between origJ1 and origJ2
         set ret [pwu::Vector3 affine $sJ [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]] [$ent_ getXYZ -grid [list $origI1 $origJ2 $origK1]]]
-        dict set cache_ $ndx $ret
+        addCachedXyz $ndx $ret
       } elseif { $origJ1 == $origJ2 && $origK1 == $origK2 } {
         # Along original I edge, Interpolate xyz between origI1 and origI2
         set ret [pwu::Vector3 affine $sI [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]] [$ent_ getXYZ -grid [list $origI2 $origJ1 $origK1]]]
-        dict set cache_ $ndx $ret
+        addCachedXyz $ndx $ret
       } else {
         set ret [::pw::InterpolatedEntity::interpolateHex \
                   [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]] \
@@ -333,7 +354,7 @@ namespace eval ::pw::InterpolatedEntity {
                   [$ent_ getXYZ -grid [list $origI2 $origJ2 $origK2]] \
                   [$ent_ getXYZ -grid [list $origI1 $origJ2 $origK2]] \
                   $sI $sJ $sK]
-        dict set cache_ $ndx $ret
+        addCachedXyz $ndx $ret
       }
       return $ret
     }
@@ -357,7 +378,6 @@ namespace eval ::pw::InterpolatedEntity {
           }
         }
       }
-      dumpXyzCache
     }
   }
 

@@ -61,21 +61,31 @@ proc getSelection { selectedVar } {
 }
 
 
+proc run { ents caching mult } {
+  set start [clock milliseconds]
+  foreach ent $ents {
+    set intpEnt [pw::InterpolatedEntity new $ent $mult]
+    $intpEnt setXyzCaching $caching
+    puts "--------- caching $caching --------"
+    Debug vputs "$intpEnt getEnt = [$intpEnt getEnt]"
+    Debug vputs "$intpEnt getMult = [$intpEnt getMult]"
+    Debug vputs "$intpEnt getOrigDimensions = [$intpEnt getOrigDimensions]"
+    Debug vputs "$intpEnt getDimensions = [$intpEnt getDimensions]"
+    Debug vputs "$intpEnt getXyzCaching = [$intpEnt getXyzCaching]"
+    $intpEnt dump
+    $intpEnt delete
+  }
+  set finish [clock milliseconds]
+  puts "Total milliseconds = [expr {$finish - $start}]"
+}
+
+
 proc main {} {
   Debug setVerbose 0
   set ents []
   if { [getSelection ents] } {
-    foreach ent $ents {
-      set intpEnt [pw::InterpolatedEntity new $ent 3]
-      #$intpEnt setXyzCaching on
-      Debug vputs "---------"
-      Debug vputs "$intpEnt getEnt = [$intpEnt getEnt]"
-      Debug vputs "$intpEnt getMult = [$intpEnt getMult]"
-      Debug vputs "$intpEnt getOrigDimensions = [$intpEnt getOrigDimensions]"
-      Debug vputs "$intpEnt getDimensions = [$intpEnt getDimensions]"
-      Debug vputs "$intpEnt getXyzCaching = [$intpEnt getXyzCaching]"
-      $intpEnt dump
-      $intpEnt delete
+    foreach caching {1} {
+      run $ents $caching 4
     }
   }
 }
