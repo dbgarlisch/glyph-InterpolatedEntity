@@ -67,11 +67,13 @@ proc main {} {
   if { [getSelection ents] } {
     foreach ent $ents {
       set intpEnt [pw::InterpolatedEntity new $ent 3]
+      #$intpEnt setXyzCaching on
       Debug vputs "---------"
       Debug vputs "$intpEnt getEnt = [$intpEnt getEnt]"
       Debug vputs "$intpEnt getMult = [$intpEnt getMult]"
       Debug vputs "$intpEnt getOrigDimensions = [$intpEnt getOrigDimensions]"
       Debug vputs "$intpEnt getDimensions = [$intpEnt getDimensions]"
+      Debug vputs "$intpEnt getXyzCaching = [$intpEnt getXyzCaching]"
       $intpEnt dump
       $intpEnt delete
     }

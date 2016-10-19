@@ -23,18 +23,18 @@ namespace eval ::pw::InterpolatedEntity {
 
   public proc new { ent mult } {
     set ret "::pw::InterpolatedEntity::_[incr ::pw::InterpolatedEntity::cnt_]"
-    namespace eval $ret $::pw::InterpolatedEntity::RefinedEntityProto_
+    namespace eval $ret $::pw::InterpolatedEntity::InterpolatedEntityProto_
     switch [$ent getType] {
     pw::Connector {
-      namespace eval $ret $::pw::InterpolatedEntity::RefinedConProto_
+      namespace eval $ret $::pw::InterpolatedEntity::InterpolatedConProto_
       set dimty 1
     }
     pw::DomainStructured {
-      namespace eval $ret $::pw::InterpolatedEntity::RefinedDomProto_
+      namespace eval $ret $::pw::InterpolatedEntity::InterpolatedDomProto_
       set dimty 2
     }
     pw::BlockStructured {
-      namespace eval $ret $::pw::InterpolatedEntity::RefinedBlkProto_
+      namespace eval $ret $::pw::InterpolatedEntity::InterpolatedBlkProto_
       set dimty 3
     }
     default {
@@ -84,11 +84,13 @@ namespace eval ::pw::InterpolatedEntity {
   }
 
 
-  variable RefinedEntityProto_ {
-    variable self_  {}
-    variable ent_   {}   ;# the entity being refined
-    variable mult_  1.0  ;# refinement multiplier
-    variable dimty_ 0    ;# ent_ dimensionality
+  variable InterpolatedEntityProto_ {
+    variable self_      {}
+    variable ent_       {}   ;# the entity being refined
+    variable mult_      1.0  ;# refinement multiplier
+    variable dimty_     0    ;# ent_ dimensionality
+    variable useCache_  0    ;# set 1 to enable xyz caching
+    variable cache_     {}   ;# dict {i j k} --> {x y z}
 
     private proc ctor { self ent mult dimty } {
       variable self_
@@ -131,6 +133,30 @@ namespace eval ::pw::InterpolatedEntity {
       return $ret
     }
 
+    public proc getXyzCaching {} {
+      variable useCache_
+      return $useCache_
+    }
+
+    public proc setXyzCaching { onOff } {
+      variable useCache_
+      switch -nocase -- $onOff {
+      0 -
+      off -
+      no -
+      disabled -
+      disable -
+      false { set useCache_ 0 }
+      1 -
+      on -
+      yes -
+      enabled -
+      enable -
+      true { set useCache_ 1 }
+      }
+      puts "setXyzCaching $onOff ==> useCache_=$useCache_"
+    }
+
     public proc delete {} {
       variable self_
       namespace delete $self_
@@ -155,9 +181,34 @@ namespace eval ::pw::InterpolatedEntity {
       # ndx and orig1 are coincident - leave orig2 == orig1
       return [list $orig1 $orig2] ;# return 1-based indices
     }
+
+    private proc getCachedXyz { ndx xyzVar } {
+      variable cache_
+      variable useCache_
+      upvar $xyzVar xyz
+      if { $useCache_ && ![catch {dict get $cache_ $ndx} xyz] } {
+        set ret 1
+      } else {
+        set xyz {}
+        set ret 0
+      }
+    }
+
+    public proc dumpXyzCache {} {
+      variable cache_
+      variable useCache_
+      if { $useCache_ } {
+        dict for {ndx xyz} $cache_ {
+          puts [format "%-12.12s ==> %s" $ndx $xyz]
+        }
+      } else {
+        puts "Caching disabled."
+      }
+    }
   }
 
-  variable RefinedConProto_ {
+  #------------------------------------------
+  variable InterpolatedConProto_ {
     public proc getXYZ { ndx } {
       variable ent_
       variable mult_
@@ -166,9 +217,11 @@ namespace eval ::pw::InterpolatedEntity {
       if { $origI1 == $origI2 } {
         # ndx is coincident with an original grid point. Get xyz directly!
         set ret [$ent_ getXYZ -grid $origI1]
-      } else {
+      } elseif { ![getCachedXyz $ndx ret] } {
         # Must interpolate xyz
         set ret [pwu::Vector3 affine $s [$ent_ getXYZ -grid $origI1] [$ent_ getXYZ -grid $origI2]]
+        variable cache_
+        dict set cache_ $ndx $ret
       }
       return $ret
     }
@@ -182,13 +235,16 @@ namespace eval ::pw::InterpolatedEntity {
         Debug vputs [format "  $ii ==> [${self_}::getOrigBracket $ii s] @ %5.3f ==> %s" $s $xyz]
         [pw::Point create] setPoint $xyz
       }
+      dumpXyzCache
     }
   }
 
-  variable RefinedDomProto_ {
+  #------------------------------------------
+  variable InterpolatedDomProto_ {
     public proc getXYZ { ndx } {
       variable ent_
       variable mult_
+      variable cache_
       set ndx [lrange $ndx 0 1]  ;# ignore extra indices
       lassign $ndx i j
       lassign [getOrigBracket $i sI] origI1 origI2
@@ -196,18 +252,23 @@ namespace eval ::pw::InterpolatedEntity {
       if { $origI1 == $origI2 && $origJ1 == $origJ2 } {
         # ndx is coincident with an original grid point. Get xyz directly!
         set ret [$ent_ getXYZ -grid [list $origI1 $origJ1]]
+      } elseif { [getCachedXyz $ndx ret] } {
+        # return cached value
       } elseif { $origI1 == $origI2 } {
         # Along original J edge, Interpolate xyz between origJ1 and origJ2
         set ret [pwu::Vector3 affine $sJ [$ent_ getXYZ -grid [list $origI1 $origJ1]] [$ent_ getXYZ -grid [list $origI1 $origJ2]]]
+        dict set cache_ $ndx $ret
       } elseif { $origJ1 == $origJ2 } {
         # Along original I edge, Interpolate xyz between origI1 and origI2
         set ret [pwu::Vector3 affine $sI [$ent_ getXYZ -grid [list $origI1 $origJ1]] [$ent_ getXYZ -grid [list $origI2 $origJ1]]]
+        dict set cache_ $ndx $ret
       } else {
         set ret [::pw::InterpolatedEntity::interpolateQuad \
                   [$ent_ getXYZ -grid [list $origI1 $origJ1]] \
                   [$ent_ getXYZ -grid [list $origI2 $origJ1]] \
                   [$ent_ getXYZ -grid [list $origI2 $origJ2]] \
                   [$ent_ getXYZ -grid [list $origI1 $origJ2]] $sI $sJ]
+        dict set cache_ $ndx $ret
       }
       return $ret
     }
@@ -228,13 +289,16 @@ namespace eval ::pw::InterpolatedEntity {
           [pw::Point create] setPoint $xyz
         }
       }
+      dumpXyzCache
     }
   }
 
-  variable RefinedBlkProto_ {
+  #------------------------------------------
+  variable InterpolatedBlkProto_ {
     public proc getXYZ { ndx } {
       variable ent_
       variable mult_
+      variable cache_
       set ndx [lrange $ndx 0 2]  ;# ignore extra indices
       lassign $ndx i j k
       lassign [getOrigBracket $i sI] origI1 origI2
@@ -243,15 +307,20 @@ namespace eval ::pw::InterpolatedEntity {
       if { $origI1 == $origI2 && $origJ1 == $origJ2 && $origK1 == $origK2 } {
         # ndx is coincident with an original grid point. Get xyz directly!
         set ret [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]]
+      } elseif { [getCachedXyz $ndx ret] } {
+        # return cached value
       } elseif { $origI1 == $origI2 && $origJ1 == $origJ2 } {
         # Along original K edge, Interpolate xyz between origK1 and origK2
         set ret [pwu::Vector3 affine $sK [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]] [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK2]]]
+        dict set cache_ $ndx $ret
       } elseif { $origI1 == $origI2 && $origK1 == $origK2 } {
         # Along original J edge, Interpolate xyz between origJ1 and origJ2
         set ret [pwu::Vector3 affine $sJ [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]] [$ent_ getXYZ -grid [list $origI1 $origJ2 $origK1]]]
+        dict set cache_ $ndx $ret
       } elseif { $origJ1 == $origJ2 && $origK1 == $origK2 } {
         # Along original I edge, Interpolate xyz between origI1 and origI2
         set ret [pwu::Vector3 affine $sI [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]] [$ent_ getXYZ -grid [list $origI2 $origJ1 $origK1]]]
+        dict set cache_ $ndx $ret
       } else {
         set ret [::pw::InterpolatedEntity::interpolateHex \
                   [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]] \
@@ -263,6 +332,7 @@ namespace eval ::pw::InterpolatedEntity {
                   [$ent_ getXYZ -grid [list $origI2 $origJ2 $origK2]] \
                   [$ent_ getXYZ -grid [list $origI1 $origJ2 $origK2]] \
                   $sI $sJ $sK]
+        dict set cache_ $ndx $ret
       }
       return $ret
     }
@@ -286,6 +356,7 @@ namespace eval ::pw::InterpolatedEntity {
           }
         }
       }
+      dumpXyzCache
     }
   }
 
