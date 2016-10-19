@@ -153,6 +153,7 @@ namespace eval ::pw::InterpolatedEntity {
       enabled -
       enable -
       true { set useCache_ 1 }
+      default { return -code error "Invalid boolean value '$onOff'" }
       }
       puts "setXyzCaching $onOff ==> useCache_=$useCache_"
     }

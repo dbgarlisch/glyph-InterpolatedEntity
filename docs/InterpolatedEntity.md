@@ -11,6 +11,8 @@ Provides the *pw::InterpolatedEntity* static and instance commands.
   * [getDimensionality](#refent-getdimensionality)
   * [getOrigDimensions](#refent-getorigdimensions)
   * [getDimensions](#refent-getdimensions)
+  * [setXyzCaching](#refent-setxyzcaching)
+  * [getXyzCaching](#refent-getxyzcaching)
   * [delete](#refent-delete)
   * [getXYZ](#refent-getxyz)
   * [dump](#refent-dump)
@@ -77,6 +79,25 @@ Returns the original (not multipled) IJK point dimensions of the wrapped entity.
 $refEnt getDimensions
 ```
 Returns the multipled IJK point dimensions of the wrapped entity.
+
+### $refEnt getXyzCaching
+```tcl
+$refEnt getXyzCaching
+```
+Returns 1 if xyz caching is enabled for this object.
+
+### $refEnt setXyzCaching
+```Tcl
+$refEnt setXyzCaching onOff
+```
+Enables or disables (default) xyz caching for this object.
+
+where,
+
+`onOff` - One of 0 (off, no, disabled, disable, false), or 1 (on, yes, enabled, enable, true).
+
+
+
 
 ### $refEnt delete
 ```tcl
