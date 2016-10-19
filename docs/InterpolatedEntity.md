@@ -3,9 +3,9 @@
 Provides the *pw::InterpolatedEntity* static and instance commands.
 
 ### Table of Contents
-* [pw::InterpolatedEntity Static Commands](#pwrefinedentity-static-commands)
-  * [new](#pwrefinedentity-new)
-* [pw::InterpolatedEntity Instance Commands](#pwrefinedentity-instance-commands)
+* [pw::InterpolatedEntity Static Commands](#pwinterpolatedentity-static-commands)
+  * [new](#pwinterpolatedentity-new)
+* [pw::InterpolatedEntity Instance Commands](#pwinterpolatedentity-instance-commands)
   * [getEnt](#refent-getent)
   * [getMult](#refent-getmult)
   * [getDimensionality](#refent-getdimensionality)
