@@ -7,7 +7,7 @@
 # SEE THE WARRANTY DISCLAIMER AT THE BOTTOM OF THIS FILE.
 #
 
-if { [namespace exists ::pw::RefinedEntity] } return
+if { [namespace exists ::pw::InterpolatedEntity] } return
 
 package require PWI_Glyph
 
@@ -18,23 +18,23 @@ source [file join [file dirname [info script]] .. tcl-Utils Debug.tcl]
 #####################################################################
 #                       public namespace procs
 #####################################################################
-namespace eval ::pw::RefinedEntity {
+namespace eval ::pw::InterpolatedEntity {
   variable cnt_ 0
 
   public proc new { ent mult } {
-    set ret "::pw::RefinedEntity::_[incr ::pw::RefinedEntity::cnt_]"
-    namespace eval $ret $::pw::RefinedEntity::RefinedEntityProto_
+    set ret "::pw::InterpolatedEntity::_[incr ::pw::InterpolatedEntity::cnt_]"
+    namespace eval $ret $::pw::InterpolatedEntity::RefinedEntityProto_
     switch [$ent getType] {
     pw::Connector {
-      namespace eval $ret $::pw::RefinedEntity::RefinedConProto_
+      namespace eval $ret $::pw::InterpolatedEntity::RefinedConProto_
       set dimty 1
     }
     pw::DomainStructured {
-      namespace eval $ret $::pw::RefinedEntity::RefinedDomProto_
+      namespace eval $ret $::pw::InterpolatedEntity::RefinedDomProto_
       set dimty 2
     }
     pw::BlockStructured {
-      namespace eval $ret $::pw::RefinedEntity::RefinedBlkProto_
+      namespace eval $ret $::pw::InterpolatedEntity::RefinedBlkProto_
       set dimty 3
     }
     default {
@@ -175,6 +175,8 @@ namespace eval ::pw::RefinedEntity {
 
     public proc dump {} {
       variable self_
+      variable ent_
+      puts "Processing connector [$ent_ getName]"
       for {set ii 1} {$ii <= [$self_ getDimensions]} {incr ii} {
         set xyz [$self_ getXYZ $ii]
         Debug vputs [format "  $ii ==> [${self_}::getOrigBracket $ii s] @ %5.3f ==> %s" $s $xyz]
@@ -201,7 +203,7 @@ namespace eval ::pw::RefinedEntity {
         # Along original I edge, Interpolate xyz between origI1 and origI2
         set ret [pwu::Vector3 affine $sI [$ent_ getXYZ -grid [list $origI1 $origJ1]] [$ent_ getXYZ -grid [list $origI2 $origJ1]]]
       } else {
-        set ret [::pw::RefinedEntity::interpolateQuad \
+        set ret [::pw::InterpolatedEntity::interpolateQuad \
                   [$ent_ getXYZ -grid [list $origI1 $origJ1]] \
                   [$ent_ getXYZ -grid [list $origI2 $origJ1]] \
                   [$ent_ getXYZ -grid [list $origI2 $origJ2]] \
@@ -212,8 +214,11 @@ namespace eval ::pw::RefinedEntity {
 
     public proc dump {} {
       variable self_
+      variable ent_
       lassign [$self_ getDimensions] iDim jDim
+      puts "Processing domain [$ent_ getName]"
       for {set ii 1} {$ii <= $iDim} {incr ii} {
+        puts "  ${ii} of $iDim"
         for {set jj 1} {$jj <= $jDim} {incr jj} {
           set ndx [list $ii $jj]
           set iBracket [${self_}::getOrigBracket $ii sI]
@@ -248,7 +253,7 @@ namespace eval ::pw::RefinedEntity {
         # Along original I edge, Interpolate xyz between origI1 and origI2
         set ret [pwu::Vector3 affine $sI [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]] [$ent_ getXYZ -grid [list $origI2 $origJ1 $origK1]]]
       } else {
-        set ret [::pw::RefinedEntity::interpolateHex \
+        set ret [::pw::InterpolatedEntity::interpolateHex \
                   [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]] \
                   [$ent_ getXYZ -grid [list $origI2 $origJ1 $origK1]] \
                   [$ent_ getXYZ -grid [list $origI2 $origJ2 $origK1]] \
@@ -264,8 +269,11 @@ namespace eval ::pw::RefinedEntity {
 
     public proc dump {} {
       variable self_
+      variable ent_
       lassign [$self_ getDimensions] iDim jDim kDim
+      puts "Processing block [$ent_ getName]"
       for {set ii 1} {$ii <= $iDim} {incr ii} {
+        puts "  ${ii} of $iDim"
         for {set jj 1} {$jj <= $jDim} {incr jj} {
           for {set kk 1} {$kk <= $kDim} {incr kk} {
             set ndx [list $ii $jj $kk]

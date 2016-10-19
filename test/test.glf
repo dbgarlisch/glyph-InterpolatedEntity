@@ -66,7 +66,7 @@ proc main {} {
   set ents []
   if { [getSelection ents] } {
     foreach ent $ents {
-      set intpEnt [pw::InterpolatedEntity new $ent 2]
+      set intpEnt [pw::InterpolatedEntity new $ent 3]
       Debug vputs "---------"
       Debug vputs "$intpEnt getEnt = [$intpEnt getEnt]"
       Debug vputs "$intpEnt getMult = [$intpEnt getMult]"
