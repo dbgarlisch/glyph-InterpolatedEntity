@@ -128,7 +128,7 @@ namespace eval ::pw::InterpolatedEntity {
       variable mult_
       set ret {}
       ::foreach numPts [$ent_ getDimensions] {
-        lappend ret [expr {($numPts - 1) * $mult_ + 1}]
+        lappend ret [origToIntpNdx $numPts]
       }
       return $ret
     }
@@ -162,45 +162,6 @@ namespace eval ::pw::InterpolatedEntity {
       namespace delete $self_
     }
 
-    private proc getOrigBracket { ndx sVar } {
-      # returns pair of original ent indices that bracket ndx
-      # ndx is 1-based
-      variable mult_
-      upvar $sVar s
-      set orig2 [set orig1 [expr {($ndx - 1) / $mult_ + 1}]]
-      set ndx1 [expr {($orig1 - 1) * $mult_ + 1}]
-      # TODO: use precomputed lookup table for s as:
-      #       set s [lindex $sTable [expr {$ndx - $ndx1}]]
-      #       Is this really faster??
-      set s [expr {double($ndx - $ndx1) / $mult_}]
-      if { $ndx != $ndx1 } {
-        # ndx lies between original indices orig1 and orig2
-        incr orig2
-      }
-      #else
-      # ndx and orig1 are coincident - leave orig2 == orig1
-      return [list $orig1 $orig2] ;# return 1-based indices
-    }
-
-    private proc getCachedXyz { ndx xyzVar } {
-      variable cache_
-      variable useCache_
-      upvar $xyzVar xyz
-      if { $useCache_ && ![catch {dict get $cache_ $ndx} xyz] } {
-        return 1
-      }
-      set xyz {}
-      return 0
-    }
-
-    private proc addCachedXyz { ndx xyz } {
-      variable cache_
-      variable useCache_
-      if { $useCache_ } {
-        dict set cache_ $ndx $xyz
-      }
-    }
-
     public proc dump {} {
       variable self_
       variable ent_
@@ -227,82 +188,89 @@ namespace eval ::pw::InterpolatedEntity {
         puts "Caching disabled."
       }
     }
+
+    private proc getOrigBracket { ndx sVar } {
+      # returns pair of original ent indices that bracket ndx
+      # ndx is 1-based
+      upvar $sVar s
+      variable mult_
+      set orig2 [set orig1 [expr {($ndx - 1) / $mult_ + 1}]]
+      set ndx1 [origToIntpNdx $orig1]
+      # TODO: use precomputed lookup table for s as:
+      #       set s [lindex $sTable [expr {$ndx - $ndx1}]]
+      #       Is this really faster??
+      set s [expr {double($ndx - $ndx1) / $mult_}]
+      if { $ndx != $ndx1 } {
+        # ndx lies between original indices orig1 and orig2
+        incr orig2
+      }
+      #else ndx and orig1 are coincident - leave orig2 == orig1
+      return [list $orig1 $orig2] ;# return 1-based indices
+    }
+
+    private proc getCachedXyz { ndx xyzVar } {
+      variable cache_
+      variable useCache_
+      upvar $xyzVar xyz
+      if { $useCache_ && ![catch {dict get $cache_ $ndx} xyz] } {
+        return 1
+      }
+      set xyz {}
+      return 0
+    }
+
+    private proc addCachedXyz { ndx xyz } {
+      variable cache_
+      variable useCache_
+      if { $useCache_ } {
+        dict set cache_ $ndx $xyz
+      }
+    }
+
+    private proc origToIntpNdx { origNdx } {
+      variable mult_
+      # maps orig grid coord to its eqiv interp grid coord
+      return [expr {($origNdx - 1) * $mult_ + 1}]
+    }
   }
 
   #------------------------------------------
   variable InterpolatedConProto_ {
-    public proc getXYZ { ndx } {
-      variable ent_
-      variable mult_
-      lassign $ndx ndx ;# ignore extra indices
-      lassign [getOrigBracket $ndx s] origI1 origI2
-      if { $origI1 == $origI2 } {
-        # ndx is coincident with an original grid point. Get xyz directly!
-        set ret [$ent_ getXYZ -grid $origI1]
-      } elseif { ![getCachedXyz $ndx ret] } {
-        # Must interpolate xyz
-        set ret [pwu::Vector3 affine $s [$ent_ getXYZ -grid $origI1] [$ent_ getXYZ -grid $origI2]]
-        addCachedXyz $ndx $ret
-      }
-      return $ret
-    }
 
     public proc foreach { ndxVar xyzVar body } {
       upvar $ndxVar ndx
       upvar $xyzVar xyz
       variable self_
       lassign [$self_ getDimensions] iDim
-      for {set ii 1} {$ii <= $iDim} {incr ii} {
-        set xyz [$self_ getXYZ $ii]
+      for {set ndx 1} {$ndx <= $iDim} {incr ndx} {
+        set xyz [$self_ getXYZ $ndx]
         uplevel $body
       }
+    }
+
+    public proc getXYZ { ndx } {
+      lassign $ndx ndx ;# ignore extra, trailing indices
+      if { [getCachedXyz $ndx ret] } {
+        return $ret
+      }
+      # xyz for $ndx NOT cached - need to compute xyz
+      variable ent_
+      lassign [getOrigBracket $ndx s] origI1 origI2
+      if { $origI1 == $origI2 } {
+        # ndx is coincident with an original grid point. Get xyz directly!
+        set ret [$ent_ getXYZ -grid $origI1]
+      } else {
+        # Must interpolate xyz
+        set ret [pwu::Vector3 affine $s [$ent_ getXYZ -grid $origI1] \
+          [$ent_ getXYZ -grid $origI2]]
+        addCachedXyz $ndx $ret
+      }
+      return $ret
     }
   }
 
   #------------------------------------------
   variable InterpolatedDomProto_ {
-    public proc getXYZ { ndx } {
-      variable ent_
-      variable mult_
-      variable cache_
-      set ndx [lrange $ndx 0 1]  ;# ignore extra indices
-      lassign $ndx i j
-      lassign [getOrigBracket $i sI] origI1 origI2
-      lassign [getOrigBracket $j sJ] origJ1 origJ2
-      if { $origI1 == $origI2 && $origJ1 == $origJ2 } {
-        # ndx is coincident with an original grid point. Get xyz directly!
-        set ret [$ent_ getXYZ -grid [list $origI1 $origJ1]]
-      } elseif { [getCachedXyz $ndx ret] } {
-        # return cached value
-      } elseif { $origI1 == $origI2 } {
-        # Along original J edge, Interpolate xyz between origJ1 and origJ2
-        set ret [pwu::Vector3 affine $sJ [$ent_ getXYZ -grid [list $origI1 $origJ1]] \
-                                         [$ent_ getXYZ -grid [list $origI1 $origJ2]]]
-        addCachedXyz $ndx $ret
-      } elseif { $origJ1 == $origJ2 } {
-        # Along original I edge, Interpolate xyz between origI1 and origI2
-        set ret [pwu::Vector3 affine $sI [$ent_ getXYZ -grid [list $origI1 $origJ1]] \
-                                         [$ent_ getXYZ -grid [list $origI2 $origJ1]]]
-        addCachedXyz $ndx $ret
-      } else {
-        # convert J1 in orig grid to J1 in interp grid
-        set intpJ1 [expr {($origJ1 - 1) * $mult_ + 1}]
-        if { ![getCachedXyz [list $i $intpJ1] J1xyz] } {
-          set J1xyz [pwu::Vector3 affine $sI [$ent_ getXYZ -grid [list $origI1 $origJ1]] \
-            [$ent_ getXYZ -grid [list $origI2 $origJ1]]]
-          addCachedXyz [list $i $intpJ1] $J1xyz
-        }
-        # convert J2 in orig grid to J2 in interp grid
-        set intpJ2 [expr {($origJ2 - 1) * $mult_ + 1}]
-        if { ![getCachedXyz [list $i $intpJ2] J2xyz] } {
-          set J2xyz [pwu::Vector3 affine $sI [$ent_ getXYZ -grid [list $origI1 $origJ2]] \
-            [$ent_ getXYZ -grid [list $origI2 $origJ2]]]
-          addCachedXyz [list $i $intpJ2] $J2xyz
-        }
-        addCachedXyz $ndx [set ret [pwu::Vector3 affine $sJ $J1xyz $J2xyz]]
-      }
-      return $ret
-    }
 
     public proc foreach { ndxVar xyzVar body } {
       upvar $ndxVar ndx
@@ -316,51 +284,54 @@ namespace eval ::pw::InterpolatedEntity {
         }
       }
     }
+
+    public proc getXYZ { ndx } {
+      set ndx [lrange $ndx 0 1] ;# ignore extra, trailing indices
+      if { [getCachedXyz $ndx ret] } {
+        return $ret
+      }
+      # xyz for $ndx NOT cached - need to compute xyz
+      variable ent_
+      lassign $ndx i j
+      lassign [getOrigBracket $i sI] origI1 origI2
+      lassign [getOrigBracket $j sJ] origJ1 origJ2
+      if { $origI1 == $origI2 && $origJ1 == $origJ2 } {
+        # ndx is coincident with an original grid point. Get xyz directly!
+        set ret [$ent_ getXYZ -grid [list $origI1 $origJ1]]
+      } elseif { $origI1 == $origI2 } {
+        # Along original J edge, Interpolate xyz between origJ1 and origJ2
+        set ret [pwu::Vector3 affine $sJ [$ent_ getXYZ -grid [list $origI1 $origJ1]] \
+                                         [$ent_ getXYZ -grid [list $origI1 $origJ2]]]
+        addCachedXyz $ndx $ret
+      } elseif { $origJ1 == $origJ2 } {
+        # Along original I edge, Interpolate xyz between origI1 and origI2
+        set ret [pwu::Vector3 affine $sI [$ent_ getXYZ -grid [list $origI1 $origJ1]] \
+                                         [$ent_ getXYZ -grid [list $origI2 $origJ1]]]
+        addCachedXyz $ndx $ret
+      } else {
+        variable mult_
+        # convert J1 in orig grid to J1 in interp grid
+        set intpJ1 [origToIntpNdx $origJ1]
+        if { ![getCachedXyz [list $i $intpJ1] J1xyz] } {
+          set J1xyz [pwu::Vector3 affine $sI [$ent_ getXYZ -grid [list $origI1 $origJ1]] \
+            [$ent_ getXYZ -grid [list $origI2 $origJ1]]]
+          addCachedXyz [list $i $intpJ1] $J1xyz
+        }
+        # convert J2 in orig grid to J2 in interp grid
+        set intpJ2 [origToIntpNdx $origJ2]
+        if { ![getCachedXyz [list $i $intpJ2] J2xyz] } {
+          set J2xyz [pwu::Vector3 affine $sI [$ent_ getXYZ -grid [list $origI1 $origJ2]] \
+            [$ent_ getXYZ -grid [list $origI2 $origJ2]]]
+          addCachedXyz [list $i $intpJ2] $J2xyz
+        }
+        addCachedXyz $ndx [set ret [pwu::Vector3 affine $sJ $J1xyz $J2xyz]]
+      }
+      return $ret
+    }
   }
 
   #------------------------------------------
   variable InterpolatedBlkProto_ {
-    public proc getXYZ { ndx } {
-      variable ent_
-      variable mult_
-      variable cache_
-      set ndx [lrange $ndx 0 2]  ;# ignore extra indices
-      lassign $ndx i j k
-      lassign [getOrigBracket $i sI] origI1 origI2
-      lassign [getOrigBracket $j sJ] origJ1 origJ2
-      lassign [getOrigBracket $k sK] origK1 origK2
-      if { $origI1 == $origI2 && $origJ1 == $origJ2 && $origK1 == $origK2 } {
-        # ndx is coincident with an original grid point. Get xyz directly!
-        set ret [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]]
-      } elseif { [getCachedXyz $ndx ret] } {
-        # return cached value
-      } elseif { $origI1 == $origI2 && $origJ1 == $origJ2 } {
-        # Along original K edge, Interpolate xyz between origK1 and origK2
-        set ret [pwu::Vector3 affine $sK [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]] [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK2]]]
-        addCachedXyz $ndx $ret
-      } elseif { $origI1 == $origI2 && $origK1 == $origK2 } {
-        # Along original J edge, Interpolate xyz between origJ1 and origJ2
-        set ret [pwu::Vector3 affine $sJ [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]] [$ent_ getXYZ -grid [list $origI1 $origJ2 $origK1]]]
-        addCachedXyz $ndx $ret
-      } elseif { $origJ1 == $origJ2 && $origK1 == $origK2 } {
-        # Along original I edge, Interpolate xyz between origI1 and origI2
-        set ret [pwu::Vector3 affine $sI [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]] [$ent_ getXYZ -grid [list $origI2 $origJ1 $origK1]]]
-        addCachedXyz $ndx $ret
-      } else {
-        set ret [::pw::InterpolatedEntity::interpolateHex \
-                  [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]] \
-                  [$ent_ getXYZ -grid [list $origI2 $origJ1 $origK1]] \
-                  [$ent_ getXYZ -grid [list $origI2 $origJ2 $origK1]] \
-                  [$ent_ getXYZ -grid [list $origI1 $origJ2 $origK1]] \
-                  [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK2]] \
-                  [$ent_ getXYZ -grid [list $origI2 $origJ1 $origK2]] \
-                  [$ent_ getXYZ -grid [list $origI2 $origJ2 $origK2]] \
-                  [$ent_ getXYZ -grid [list $origI1 $origJ2 $origK2]] \
-                  $sI $sJ $sK]
-        addCachedXyz $ndx $ret
-      }
-      return $ret
-    }
 
     public proc foreach { ndxVar xyzVar body } {
       upvar $ndxVar ndx
@@ -375,6 +346,76 @@ namespace eval ::pw::InterpolatedEntity {
           }
         }
       }
+    }
+
+    public proc getXYZ { ndx } {
+      set ndx [lrange $ndx 0 2] ;# ignore extra, trailing indices
+      if { [getCachedXyz $ndx ret] } {
+        return $ret
+      }
+      # xyz for $ndx NOT cached - need to compute xyz
+      variable ent_
+      lassign $ndx i j k
+      lassign [getOrigBracket $i sI] origI1 origI2
+      lassign [getOrigBracket $j sJ] origJ1 origJ2
+      lassign [getOrigBracket $k sK] origK1 origK2
+      if { $origI1 == $origI2 && $origJ1 == $origJ2 && $origK1 == $origK2 } {
+        # ndx is coincident with an original grid point. Get xyz directly!
+        return [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]]
+      }
+      if { $origI1 == $origI2 && $origJ1 == $origJ2 } {
+        # Along original K edge, Interpolate xyz between origK1 and origK2
+        set ret [pwu::Vector3 affine $sK \
+          [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]] \
+          [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK2]]]
+      } elseif { $origI1 == $origI2 && $origK1 == $origK2 } {
+        # Along original J edge, Interpolate xyz between origJ1 and origJ2
+        set ret [pwu::Vector3 affine $sJ \
+          [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]] \
+          [$ent_ getXYZ -grid [list $origI1 $origJ2 $origK1]]]
+      } elseif { $origJ1 == $origJ2 && $origK1 == $origK2 } {
+        # Along original I edge, Interpolate xyz between origI1 and origI2
+        set ret [pwu::Vector3 affine $sI \
+          [$ent_ getXYZ -grid [list $origI1 $origJ1 $origK1]] \
+          [$ent_ getXYZ -grid [list $origI2 $origJ1 $origK1]]]
+      } else {
+        # In block interior - do the heavy calculations
+        set ret [pwu::Vector3 affine $sK [getKFaceXyz $i $j $origK1] \
+          [getKFaceXyz $i $j $origK2]]
+      }
+      addCachedXyz $ndx $ret
+      return $ret
+    }
+
+    private proc getKFaceXyz { i j origK } {
+      variable mult_
+      # convert origK coord to interp K coord
+      set intpK [origToIntpNdx $origK]
+      # Get xyz at {$i,$j} in origK face of block
+      if { ![getCachedXyz [list $i $j $intpK] xyz] } {
+        lassign [getOrigBracket $j sJ] origJ1 origJ2
+        set xyz [pwu::Vector3 affine $sJ \
+          [getJKEdgeXyz $i $origJ1 $origK] \
+          [getJKEdgeXyz $i $origJ2 $origK]]
+        addCachedXyz [list $i $j $intpK] $xyz
+      }
+      return $xyz
+    }
+
+    private proc getJKEdgeXyz { i origJ origK } {
+      # Get xyz at $i along origJK edge of block
+      variable mult_
+      set intpJ [origToIntpNdx $origJ]
+      set intpK [origToIntpNdx $origK]
+      if { ![getCachedXyz [list $i $intpJ $intpK] xyz] } {
+        variable ent_
+        lassign [getOrigBracket $i sI] origI1 origI2
+        set xyz [pwu::Vector3 affine $sI \
+          [$ent_ getXYZ -grid [list $origI1 $origJ $origK]] \
+          [$ent_ getXYZ -grid [list $origI2 $origJ $origK]]]
+        addCachedXyz [list $i $intpJ $intpK] $xyz
+      }
+      return $xyz
     }
   }
 

@@ -61,11 +61,16 @@ proc getSelection { selectedVar } {
 }
 
 
-proc run { ents caching mult } {
-  foreach ent $ents {
+proc statMsg { caching delta ptCnt } {
+  format "caching $caching: Used $delta milliseconds for $ptCnt points (%.1f pts/msec)." [expr {1.0 * $ptCnt / $delta}]
+}
+
+proc run { ent mult statsVar } {
+  upvar $statsVar stats
+  foreach caching {0 1} {
     set intpEnt [pw::InterpolatedEntity new $ent $mult]
     $intpEnt setXyzCaching $caching
-    $intpEnt dump
+    #$intpEnt dump
     set ptCnt 0
     set start [clock milliseconds]
     $intpEnt foreach ndx xyz {
@@ -75,8 +80,12 @@ proc run { ents caching mult } {
     }
     set finish [clock milliseconds]
     set delta [expr {$finish - $start + 1}] ;# dont allow zero
-    puts [format "Used $delta milliseconds for $ptCnt points (%.1f pts/msec)." [expr {1.0 * $ptCnt / $delta}]]
+    puts [statMsg $caching $delta $ptCnt]
     $intpEnt delete
+    set tmpCnt [dict get $stats COUNTS $caching]
+    dict set stats COUNTS $caching [incr tmpCnt $ptCnt]
+    set tmpDelta [dict get $stats DELTAS $caching]
+    dict set stats DELTAS $caching [incr tmpDelta $delta]
   }
 }
 
@@ -85,9 +94,23 @@ proc main {} {
   Debug setVerbose 0
   set ents []
   if { [getSelection ents] } {
-    foreach caching {0 1} {
-      run $ents $caching 6
+    set stats [dict create]
+    dict set stats COUNTS 0 0
+    dict set stats COUNTS 1 0
+    dict set stats DELTAS 0 0
+    dict set stats DELTAS 1 0
+    foreach ent $ents {
+      puts "**** [$ent getName] ****"
+      run $ent 4 stats
     }
+    puts {}
+    puts "Totals:"
+    foreach caching {0 1} {
+      set delta [dict get $stats DELTAS $caching]
+      set ptCnt [dict get $stats COUNTS $caching]
+      puts [statMsg $caching $delta $ptCnt]
+    }
+    puts {}
   }
 }
 
