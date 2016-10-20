@@ -84,8 +84,8 @@ proc main {} {
   Debug setVerbose 0
   set ents []
   if { [getSelection ents] } {
-    foreach caching {1} {
-      run $ents $caching 4
+    foreach caching {0 1} {
+      run $ents $caching 3
     }
   }
 }
