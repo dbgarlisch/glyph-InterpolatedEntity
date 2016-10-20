@@ -62,21 +62,22 @@ proc getSelection { selectedVar } {
 
 
 proc run { ents caching mult } {
-  set start [clock milliseconds]
   foreach ent $ents {
     set intpEnt [pw::InterpolatedEntity new $ent $mult]
     $intpEnt setXyzCaching $caching
-    puts "--------- caching $caching --------"
-    Debug vputs "$intpEnt getEnt = [$intpEnt getEnt]"
-    Debug vputs "$intpEnt getMult = [$intpEnt getMult]"
-    Debug vputs "$intpEnt getOrigDimensions = [$intpEnt getOrigDimensions]"
-    Debug vputs "$intpEnt getDimensions = [$intpEnt getDimensions]"
-    Debug vputs "$intpEnt getXyzCaching = [$intpEnt getXyzCaching]"
     $intpEnt dump
+    set ptCnt 0
+    set start [clock milliseconds]
+    $intpEnt foreach ndx xyz {
+      incr ptCnt
+      #[set dbPt [pw::Point create]] setPoint $xyz
+      #$dbPt setName "pt($ndx)"
+    }
+    set finish [clock milliseconds]
+    set delta [expr {$finish - $start + 1}] ;# dont allow zero
+    puts [format "Used $delta milliseconds for $ptCnt points (%.1f pts/msec)." [expr {1.0 * $ptCnt / $delta}]]
     $intpEnt delete
   }
-  set finish [clock milliseconds]
-  puts "Total milliseconds = [expr {$finish - $start}]"
 }
 
 
@@ -85,7 +86,7 @@ proc main {} {
   set ents []
   if { [getSelection ents] } {
     foreach caching {0 1} {
-      run $ents $caching 3
+      run $ents $caching 6
     }
   }
 }

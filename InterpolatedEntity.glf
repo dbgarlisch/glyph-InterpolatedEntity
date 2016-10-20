@@ -127,7 +127,7 @@ namespace eval ::pw::InterpolatedEntity {
       variable ent_
       variable mult_
       set ret {}
-      foreach numPts [$ent_ getDimensions] {
+      ::foreach numPts [$ent_ getDimensions] {
         lappend ret [expr {($numPts - 1) * $mult_ + 1}]
       }
       return $ret
@@ -187,7 +187,6 @@ namespace eval ::pw::InterpolatedEntity {
       variable useCache_
       upvar $xyzVar xyz
       if { $useCache_ && ![catch {dict get $cache_ $ndx} xyz] } {
-        #puts [format "      %-10.10s ==> %s" $ndx $xyz]
         return 1
       }
       set xyz {}
@@ -198,9 +197,23 @@ namespace eval ::pw::InterpolatedEntity {
       variable cache_
       variable useCache_
       if { $useCache_ } {
-        #puts [format "Cache %-10.10s ==> %s" $ndx $xyz]
         dict set cache_ $ndx $xyz
       }
+    }
+
+    public proc dump {} {
+      variable self_
+      variable ent_
+      set dashes [string repeat - 50]
+      set fmt "| %-20.20s | %-30.30s |"
+      puts {}
+      puts "Processing: [$ent_ getName]"
+      puts [format $fmt $dashes $dashes]
+      puts [format $fmt "\$self_" $self_]
+      ::foreach cmd {getEnt getMult getOrigDimensions getDimensions getXyzCaching} {
+        puts [format $fmt $cmd [$self_ $cmd]]
+      }
+      puts [format $fmt $dashes $dashes]
     }
 
     public proc dumpXyzCache {} {
@@ -234,14 +247,14 @@ namespace eval ::pw::InterpolatedEntity {
       return $ret
     }
 
-    public proc dump {} {
+    public proc foreach { ndxVar xyzVar body } {
+      upvar $ndxVar ndx
+      upvar $xyzVar xyz
       variable self_
-      variable ent_
-      puts "Processing connector [$ent_ getName]"
-      for {set ii 1} {$ii <= [$self_ getDimensions]} {incr ii} {
+      lassign [$self_ getDimensions] iDim
+      for {set ii 1} {$ii <= $iDim} {incr ii} {
         set xyz [$self_ getXYZ $ii]
-        Debug vputs [format "  $ii ==> [${self_}::getOrigBracket $ii s] @ %5.3f ==> %s" $s $xyz]
-        [pw::Point create] setPoint $xyz
+        uplevel $body
       }
     }
   }
@@ -275,35 +288,31 @@ namespace eval ::pw::InterpolatedEntity {
         # convert J1 in orig grid to J1 in interp grid
         set intpJ1 [expr {($origJ1 - 1) * $mult_ + 1}]
         if { ![getCachedXyz [list $i $intpJ1] J1xyz] } {
-          addCachedXyz [list $i $intpJ1] [pwu::Vector3 affine $sI [$ent_ getXYZ \
-            -grid [list $origI1 $origJ1]] [$ent_ getXYZ -grid [list $origI2 $origJ1]]]
+          set J1xyz [pwu::Vector3 affine $sI [$ent_ getXYZ -grid [list $origI1 $origJ1]] \
+            [$ent_ getXYZ -grid [list $origI2 $origJ1]]]
+          addCachedXyz [list $i $intpJ1] $J1xyz
         }
         # convert J2 in orig grid to J2 in interp grid
         set intpJ2 [expr {($origJ2 - 1) * $mult_ + 1}]
         if { ![getCachedXyz [list $i $intpJ2] J2xyz] } {
-          addCachedXyz [list $i $intpJ2] [pwu::Vector3 affine $sI [$ent_ getXYZ \
-            -grid [list $origI1 $origJ2]] [$ent_ getXYZ -grid [list $origI2 $origJ2]]]
+          set J2xyz [pwu::Vector3 affine $sI [$ent_ getXYZ -grid [list $origI1 $origJ2]] \
+            [$ent_ getXYZ -grid [list $origI2 $origJ2]]]
+          addCachedXyz [list $i $intpJ2] $J2xyz
         }
         addCachedXyz $ndx [set ret [pwu::Vector3 affine $sJ $J1xyz $J2xyz]]
       }
       return $ret
     }
 
-    public proc dump {} {
+    public proc foreach { ndxVar xyzVar body } {
+      upvar $ndxVar ndx
+      upvar $xyzVar xyz
       variable self_
-      variable ent_
       lassign [$self_ getDimensions] iDim jDim
-      puts "Processing domain [$ent_ getName]"
       for {set ii 1} {$ii <= $iDim} {incr ii} {
-        #puts "  ${ii} of $iDim"
         for {set jj 1} {$jj <= $jDim} {incr jj} {
-          set ndx [list $ii $jj]
-          set iBracket [${self_}::getOrigBracket $ii sI]
-          set jBracket [${self_}::getOrigBracket $jj sJ]
-          set xyz [$self_ getXYZ $ndx]
-          #Debug vputs [format "  [list $ndx] ==> [list $iBracket] @ %5.3f [list $jBracket]  @ %5.3f ==> %s" $sI $sJ $xyz]
-          #[set dbPt [pw::Point create]] setPoint $xyz
-          #$dbPt setName "pt($ndx)"
+          set xyz [$self_ getXYZ [set ndx [list $ii $jj]]]
+          uplevel $body
         }
       }
     }
@@ -353,22 +362,16 @@ namespace eval ::pw::InterpolatedEntity {
       return $ret
     }
 
-    public proc dump {} {
+    public proc foreach { ndxVar xyzVar body } {
+      upvar $ndxVar ndx
+      upvar $xyzVar xyz
       variable self_
-      variable ent_
       lassign [$self_ getDimensions] iDim jDim kDim
-      puts "Processing block [$ent_ getName]"
       for {set ii 1} {$ii <= $iDim} {incr ii} {
-        puts "  ${ii} of $iDim"
         for {set jj 1} {$jj <= $jDim} {incr jj} {
           for {set kk 1} {$kk <= $kDim} {incr kk} {
-            set ndx [list $ii $jj $kk]
-            set iBracket [${self_}::getOrigBracket $ii sI]
-            set jBracket [${self_}::getOrigBracket $jj sJ]
-            set kBracket [${self_}::getOrigBracket $kk sK]
-            set xyz [$self_ getXYZ $ndx]
-            Debug vputs [format "  [list $ndx] ==> [list $iBracket] @ %5.3f [list $jBracket]  @ %5.3f [list $kBracket]  @ %5.3f ==> %s" $sI $sJ $sK $xyz]
-            [pw::Point create] setPoint $xyz
+            set xyz [$self_ getXYZ [set ndx [list $ii $jj $kk]]]
+            uplevel $body
           }
         }
       }
