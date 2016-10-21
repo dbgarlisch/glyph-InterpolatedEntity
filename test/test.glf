@@ -61,32 +61,36 @@ proc getSelection { selectedVar } {
 }
 
 
-proc statMsg { caching delta ptCnt } {
-  format "caching $caching: Used $delta milliseconds for $ptCnt points (%.1f pts/msec)." [expr {1.0 * $ptCnt / $delta}]
+proc statMsg { lbl delta ptCnt } {
+  statMsgHdr $lbl $delta $ptCnt [expr {(1000 * $ptCnt) / $delta}]
 }
+
+
+proc statMsgHdr { args } {
+  set dash [string repeat - 50]
+  lappend args $dash $dash $dash $dash
+  lassign $args v1 v2 v3 v4
+  format {| %-10.10s | %7.7s | %7.7s | %8.8s |} $v1 $v2 $v3 $v4
+}
+
 
 proc run { ent mult statsVar } {
   upvar $statsVar stats
-  foreach caching {0 1} {
-    set intpEnt [pw::InterpolatedEntity new $ent $mult]
-    $intpEnt setXyzCaching $caching
-    #$intpEnt dump
-    set ptCnt 0
-    set start [clock milliseconds]
-    $intpEnt foreach ndx xyz {
-      incr ptCnt
-      #[set dbPt [pw::Point create]] setPoint $xyz
-      #$dbPt setName "pt($ndx)"
-    }
-    set finish [clock milliseconds]
-    set delta [expr {$finish - $start + 1}] ;# dont allow zero
-    puts [statMsg $caching $delta $ptCnt]
-    $intpEnt delete
-    set tmpCnt [dict get $stats COUNTS $caching]
-    dict set stats COUNTS $caching [incr tmpCnt $ptCnt]
-    set tmpDelta [dict get $stats DELTAS $caching]
-    dict set stats DELTAS $caching [incr tmpDelta $delta]
+  set intpEnt [pw::InterpolatedEntity new $ent $mult]
+  #$intpEnt dump
+  set ptCnt 0
+  set start [clock milliseconds]
+  $intpEnt foreach ndx xyz {
+    incr ptCnt
+    #[set dbPt [pw::Point create]] setPoint $xyz
+    #$dbPt setName "pt($ndx)"
   }
+  set finish [clock milliseconds]
+  set delta [expr {$finish - $start + 1}] ;# dont allow zero
+  puts [statMsg [$ent getName] $delta $ptCnt]
+  $intpEnt delete
+  dict incr stats PTCNT $ptCnt
+  dict incr stats DELTA $delta
 }
 
 
@@ -95,21 +99,15 @@ proc main {} {
   set ents []
   if { [getSelection ents] } {
     set stats [dict create]
-    dict set stats COUNTS 0 0
-    dict set stats COUNTS 1 0
-    dict set stats DELTAS 0 0
-    dict set stats DELTAS 1 0
+    puts [statMsgHdr Name mSec NumPts Pts/sec]
+    puts [statMsgHdr]
     foreach ent $ents {
-      puts "**** [$ent getName] ****"
       run $ent 4 stats
     }
-    puts {}
-    puts "Totals:"
-    foreach caching {0 1} {
-      set delta [dict get $stats DELTAS $caching]
-      set ptCnt [dict get $stats COUNTS $caching]
-      puts [statMsg $caching $delta $ptCnt]
-    }
+    set delta [dict get $stats DELTA]
+    set ptCnt [dict get $stats PTCNT]
+    puts [statMsgHdr]
+    puts [statMsg TOTAL $delta $ptCnt]
     puts {}
   }
 }

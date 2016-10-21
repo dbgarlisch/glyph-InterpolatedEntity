@@ -46,50 +46,12 @@ namespace eval ::pw::InterpolatedEntity {
     }
   }
 
-
-  private proc interpolateQuad { pt11 pt21 pt22 pt12 sI sJ } {
-    # Linearly interpolate $ret on quad interior.
-    # Given: 4 corner points and normalized edge distances sI and sJ
-    #
-    #      pt12---ptJ2---pt22
-    #       |      :      |
-    #       |      :      |
-    #    >  |.....$ret    |
-    #    >  |      :      |
-    # sJ >  |      :      |
-    #    > pt11---ptJ1---pt21
-    #       ^^^^^^^^
-    #         sI
-    return [pwu::Vector3 affine $sJ [pwu::Vector3 affine $sI $pt11 $pt21] \
-                                    [pwu::Vector3 affine $sI $pt12 $pt22]]
-  }
-
-
-  private proc interpolateHex { pt111 pt211 pt221 pt121 pt112 pt212 pt222 pt122 sI sJ sK } {
-    # Linearly interpolate $ret on hex interior.
-    # Given: 8 corner points and normalized edge distances sI, sJ, and sK
-    #
-    #            K==1 face                      K==2 face
-    #      pt121---ptJ21---pt221          pt122---ptJ22---pt222
-    #       |       :       |              |       :       |
-    #       |       :       |              |       :       |
-    #    >  |......$ptK1    |           >  |......$ptK2    |
-    #    >  |       :       |           >  |       :       |
-    # sJ >  |       :       |        sJ >  |       :       |
-    #    > pt111---ptJ11---pt211        > pt112---ptJ12---pt212
-    #       ^^^^^^^^^                      ^^^^^^^^^
-    #          sI                             sI
-    return [pwu::Vector3 affine $sK [interpolateQuad $pt111 $pt211 $pt221 $pt121 $sI $sJ] \
-                                    [interpolateQuad $pt112 $pt212 $pt222 $pt122 $sI $sJ]]
-  }
-
-
+  #------------------------------------------
   variable InterpolatedEntityProto_ {
     variable self_      {}
     variable ent_       {}   ;# the entity being refined
     variable mult_      1.0  ;# refinement multiplier
     variable dimty_     0    ;# ent_ dimensionality
-    variable useCache_  0    ;# set 1 to enable xyz caching
     variable cache_     {}   ;# dict {i j k} --> {x y z}
 
     private proc ctor { self ent mult dimty } {
@@ -133,30 +95,6 @@ namespace eval ::pw::InterpolatedEntity {
       return $ret
     }
 
-    public proc getXyzCaching {} {
-      variable useCache_
-      return $useCache_
-    }
-
-    public proc setXyzCaching { onOff } {
-      variable useCache_
-      switch -nocase -- $onOff {
-      0 -
-      off -
-      no -
-      disabled -
-      disable -
-      false { set useCache_ 0 }
-      1 -
-      on -
-      yes -
-      enabled -
-      enable -
-      true { set useCache_ 1 }
-      default { return -code error "Invalid boolean value '$onOff'" }
-      }
-    }
-
     public proc delete {} {
       variable self_
       namespace delete $self_
@@ -179,13 +117,8 @@ namespace eval ::pw::InterpolatedEntity {
 
     public proc dumpXyzCache {} {
       variable cache_
-      variable useCache_
-      if { $useCache_ } {
-        dict for {ndx xyz} $cache_ {
-          puts [format "%-12.12s ==> %s" $ndx $xyz]
-        }
-      } else {
-        puts "Caching disabled."
+      dict for {ndx xyz} $cache_ {
+        puts [format "%-12.12s ==> %s" $ndx $xyz]
       }
     }
 
@@ -209,10 +142,9 @@ namespace eval ::pw::InterpolatedEntity {
     }
 
     private proc getCachedXyz { ndx xyzVar } {
-      variable cache_
-      variable useCache_
       upvar $xyzVar xyz
-      if { $useCache_ && ![catch {dict get $cache_ $ndx} xyz] } {
+      variable cache_
+      if { ![catch {dict get $cache_ $ndx} xyz] } {
         return 1
       }
       set xyz {}
@@ -221,10 +153,7 @@ namespace eval ::pw::InterpolatedEntity {
 
     private proc addCachedXyz { ndx xyz } {
       variable cache_
-      variable useCache_
-      if { $useCache_ } {
-        dict set cache_ $ndx $xyz
-      }
+      dict set cache_ $ndx $xyz
     }
 
     private proc origToIntpNdx { origNdx } {
@@ -244,7 +173,7 @@ namespace eval ::pw::InterpolatedEntity {
       lassign [$self_ getDimensions] iDim
       for {set ndx 1} {$ndx <= $iDim} {incr ndx} {
         set xyz [$self_ getXYZ $ndx]
-        uplevel $body
+        uplevel 1 $body
       }
     }
 
@@ -271,7 +200,6 @@ namespace eval ::pw::InterpolatedEntity {
 
   #------------------------------------------
   variable InterpolatedDomProto_ {
-
     public proc foreach { ndxVar xyzVar body } {
       upvar $ndxVar ndx
       upvar $xyzVar xyz
@@ -280,7 +208,10 @@ namespace eval ::pw::InterpolatedEntity {
       for {set ii 1} {$ii <= $iDim} {incr ii} {
         for {set jj 1} {$jj <= $jDim} {incr jj} {
           set xyz [$self_ getXYZ [set ndx [list $ii $jj]]]
-          uplevel $body
+          if { [catch {uplevel 1 $body} ret opts] && 3 == [lindex $opts 1] } {
+            # TCL_BREAK
+            return
+          }
         }
       }
     }
@@ -342,7 +273,10 @@ namespace eval ::pw::InterpolatedEntity {
         for {set jj 1} {$jj <= $jDim} {incr jj} {
           for {set kk 1} {$kk <= $kDim} {incr kk} {
             set xyz [$self_ getXYZ [set ndx [list $ii $jj $kk]]]
-            uplevel $body
+            if { [catch {uplevel 1 $body} ret opts] && 3 == [lindex $opts 1] } {
+              # TCL_BREAK
+              return
+            }
           }
         }
       }

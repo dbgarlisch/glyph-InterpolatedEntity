@@ -6,17 +6,16 @@ Provides the *pw::InterpolatedEntity* static and instance commands.
 * [pw::InterpolatedEntity Static Commands](#pwinterpolatedentity-static-commands)
   * [new](#pwinterpolatedentity-new)
 * [pw::InterpolatedEntity Instance Commands](#pwinterpolatedentity-instance-commands)
-  * [getEnt](#refent-getent)
-  * [getMult](#refent-getmult)
-  * [getDimensionality](#refent-getdimensionality)
-  * [getOrigDimensions](#refent-getorigdimensions)
-  * [getDimensions](#refent-getdimensions)
-  * [delete](#refent-delete)
-  * [getXYZ](#refent-getxyz)
-  * [dump](#refent-dump)
-  * [foreach](#refent-foreach)
-* [Usage Examples](#usage-examples)
-  * [Example 1](#example-1)
+  * [getEnt](#obj-getent)
+  * [getMult](#obj-getmult)
+  * [getDimensionality](#obj-getdimensionality)
+  * [getOrigDimensions](#obj-getorigdimensions)
+  * [getDimensions](#obj-getdimensions)
+  * [delete](#obj-delete)
+  * [getXYZ](#obj-getxyz)
+  * [dump](#obj-dump)
+  * [foreach](#obj-foreach)
+* [Usage Example](#usage-example)
 
 ## pw::InterpolatedEntity Static Commands
 
@@ -44,68 +43,67 @@ where,
 `mult` - The cell multiplier.This determines the number of interpolated points.
 
 
-
 ## pw::InterpolatedEntity Instance Commands
 
 Objects created by `pw::InterpolatedEntity new` support the following commands.
 
-### $refEnt getEnt
+### $obj getEnt
 ```tcl
-$refEnt getEnt
+$obj getEnt
 ```
 Returns the wrapped entity object.
 
-### $refEnt getMult
+### $obj getMult
 ```tcl
-$refEnt getMult
+$obj getMult
 ```
 Returns the cell multiplier value.
 
-### $refEnt getDimensionality
+### $obj getDimensionality
 ```tcl
-$refEnt getDimensionality
+$obj getDimensionality
 ```
 Returns the cell dimensionality of the wrapped entity.
 
-### $refEnt getOrigDimensions
+### $obj getOrigDimensions
 ```tcl
-$refEnt getOrigDimensions
+$obj getOrigDimensions
 ```
 Returns the original (not multipled) IJK point dimensions of the wrapped entity.
 
-### $refEnt getDimensions
+### $obj getDimensions
 ```tcl
-$refEnt getDimensions
+$obj getDimensions
 ```
 Returns the multipled IJK point dimensions of the wrapped entity.
 
-### $refEnt delete
+### $obj delete
 ```tcl
-$refEnt delete
+$obj delete
 ```
 Destroys the InterpolatedEntity object. Returns nothing.
 
-### $refEnt getXYZ
+### $obj getXYZ
 ```tcl
-$refEnt getXYZ ndx
+$obj getXYZ ndx
 ```
 Returns the XYZ value at a requested grid index position.
 
 where,
 
-`ndx` - A list containing the I (connectors), IJ (domains), or IJK (blocks) grid position index. The wrapped entity's dimensionality determines the minimum number of indices required. Any indices beyond the dimensionality are silently ignored. For example, an index of `$refEnt getXYZ {10 1 2}` for a wrapped connector is silently interpreted as `$refEnt getXYZ {10}`.
+`ndx` - A list containing the I (connectors), IJ (domains), or IJK (blocks) grid position index. The wrapped entity's dimensionality determines the minimum number of indices required. Any indices beyond the dimensionality are silently ignored. For example, an index of `$obj getXYZ {10 1 2}` for a wrapped connector is silently interpreted as `$obj getXYZ {10}`.
 
-### $refEnt dump
+### $obj dump
 ```tcl
-$refEnt dump
+$obj dump
 ```
 Dumps various debug information to stdout.
 
-### $refEnt foreach 
+### $obj foreach
 ```tcl
-$refEnt foreach ndxVar xyzVar body
+$obj foreach ndxVar xyzVar body
 ```
-Loops over every grid point in $refEnt. For each point, the vars `ndxVar` and `xyzVar` are set and `body` is invoked. The indices are enumerated with `i` as the outer (slowest) loop and `k` as the inner (fastest) loop.
+Loops over every grid point in $obj. For each point, the vars `ndxVar` and `xyzVar` are set and `body` is invoked. The indices are enumerated with `i` as the outer (slowest) loop and `k` as the inner (fastest) loop.
 
 where,
 
@@ -116,35 +114,23 @@ where,
 `body` - The script to execute for each grid point.
 
 
-## Usage Examples
-
-### Example 1
-Basic Usage.
+## Usage Example
 ```
-Debug setVerbose 1 ;# enable debug messages
-set createPts 0
-
 # $sblk refers to an exisiting structured block entity
-# $refinedBlk provides access to an interpolated grid with a 3x cell density
-set refEnt [pw::InterpolatedEntity new $sblk 3]
-vputs "$refinedBlk getEnt            = [$refinedBlk getEnt]"
-vputs "$refinedBlk getMult           = [$refinedBlk getMult]"
-vputs "$refinedBlk getOrigDimensions = [$refinedBlk getOrigDimensions]"
-vputs "$refinedBlk getDimensions     = [$refinedBlk getDimensions]"
-
-lassign [$refinedBlk getDimensions] iDim jDim kDim
-for {set ii 1} {$ii <= $iDim} {incr ii} {
-  for {set jj 1} {$jj <= $jDim} {incr jj} {
-    for {set kk 1} {$kk <= $kDim} {incr kk} {
-      set ndx [list $ii $jj $kk]
-      set xyz [$refinedBlk getXYZ $ndx]
-      puts "[list $ndx] ==> $xyz"
-      if { $createPts } {
-        [pw::Point create] setPoint $xyz
-      }
-    }
+# $obj provides access to an interpolated grid with a 3x cell density
+set obj [pw::InterpolatedEntity new $sblk 3]
+vputs "$obj getEnt            = [$obj getEnt]"
+vputs "$obj getMult           = [$obj getMult]"
+vputs "$obj getOrigDimensions = [$obj getOrigDimensions]"
+vputs "$obj getDimensions     = [$obj getDimensions]"
+set createDbPts 0 ;# Slow if this is enabled for large grids
+$obj foreach ndx xyz {
+  puts "[list $ndx] ==> $xyz"
+  if { $createDbPts } {
+    set dbPt [pw::Point create]
+    $dbPt setPoint $xyz
+    $dbPt setName "pt($ndx)"
   }
 }
-
-$refinedBlk delete
+$obj delete
 ```
