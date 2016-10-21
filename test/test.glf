@@ -61,22 +61,50 @@ proc getSelection { selectedVar } {
 }
 
 
-proc statMsg { lbl delta ptCnt } {
-  statMsgHdr $lbl $delta $ptCnt [expr {(1000 * $ptCnt) / $delta}]
+proc statMsg { lbl pass delta ptCnt } {
+  set msec $delta
+  set h [expr {$msec / 3600000}]
+  set msec [expr {$msec - $h * 3600000}]
+  set m [expr {$msec / 60000}]
+  set msec [expr {$msec - $m * 60000}]
+  set s [expr {$msec / 1000}]
+  set msec [expr {$msec - $s * 1000}]
+  set hmsm [format "%02d:%02d:%02d.%03d" $h $m $s $msec]
+  statTableRow $lbl $pass $hmsm $ptCnt [expr {(1000 * $ptCnt) / $delta}]
 }
 
 
-proc statMsgHdr { args } {
-  set dash [string repeat - 50]
-  lappend args $dash $dash $dash $dash
-  lassign $args v1 v2 v3 v4
-  format {| %-10.10s | %7.7s | %7.7s | %8.8s |} $v1 $v2 $v3 $v4
+proc statTableRow { args } {
+  set align right
+  set filler {}
+  set more 1
+  while { $more } {
+    switch -- [lindex $args 0] {
+    -align { set args [lassign $args --> align] }
+    -fill { set args [lassign $args --> filler] }
+    -- { set args [lassign $args -->] ; set more 0 }
+    default { set more 0 }
+    }
+  }
+  switch -nocase -- $align {
+  left  { set align - }
+  right { set align {} }
+  }
+  if { 0 == [string length $filler] } {
+    set filler -
+  }
+  if { [llength $args] < 5 } {
+    set dash [string repeat $filler 50]
+    lappend args $dash $dash $dash $dash $dash
+  }
+  lassign $args v1 v2 v3 v4 v5
+  #         Entity     Pass            Time              NumPts          Pts/sec
+  format "| %-10.10s | %${align}4.4s | %${align}12.12s | %${align}7.7s | %${align}8.8s |" $v1 $v2 $v3 $v4 $v5
 }
 
 
-proc run { ent mult statsVar } {
+proc run { intpEnt pass statsVar } {
   upvar $statsVar stats
-  set intpEnt [pw::InterpolatedEntity new $ent $mult]
   #$intpEnt dump
   set ptCnt 0
   set start [clock milliseconds]
@@ -87,8 +115,7 @@ proc run { ent mult statsVar } {
   }
   set finish [clock milliseconds]
   set delta [expr {$finish - $start + 1}] ;# dont allow zero
-  puts [statMsg [$ent getName] $delta $ptCnt]
-  $intpEnt delete
+  puts [statMsg [[$intpEnt getEnt] getName] $pass $delta $ptCnt]
   dict incr stats PTCNT $ptCnt
   dict incr stats DELTA $delta
 }
@@ -98,16 +125,27 @@ proc main {} {
   Debug setVerbose 0
   set ents []
   if { [getSelection ents] } {
-    set stats [dict create]
-    puts [statMsgHdr Name mSec NumPts Pts/sec]
-    puts [statMsgHdr]
-    foreach ent $ents {
-      run $ent 4 stats
+
+    set mult 2
+
+    set stats1 [dict create]
+    set stats2 [dict create]
+    puts "| Mult = $mult"
+    puts [statTableRow -align left Entity Pass Time NumPts Pts/sec]
+    foreach ent [lsort -dictionary $ents] {
+      set intpEnt [pw::InterpolatedEntity new $ent $mult]
+      puts [statTableRow]
+      run $intpEnt 1 stats1
+      run $intpEnt 2 stats2
+      $intpEnt delete
     }
-    set delta [dict get $stats DELTA]
-    set ptCnt [dict get $stats PTCNT]
-    puts [statMsgHdr]
-    puts [statMsg TOTAL $delta $ptCnt]
+    puts [statTableRow -fill =]
+    set delta [dict get $stats1 DELTA]
+    set ptCnt [dict get $stats1 PTCNT]
+    puts [statMsg TOTAL 1 $delta $ptCnt]
+    set delta [dict get $stats2 DELTA]
+    set ptCnt [dict get $stats2 PTCNT]
+    puts [statMsg TOTAL 2 $delta $ptCnt]
     puts {}
   }
 }
