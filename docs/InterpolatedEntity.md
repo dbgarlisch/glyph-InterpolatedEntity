@@ -11,11 +11,10 @@ Provides the *pw::InterpolatedEntity* static and instance commands.
   * [getDimensionality](#refent-getdimensionality)
   * [getOrigDimensions](#refent-getorigdimensions)
   * [getDimensions](#refent-getdimensions)
-  * [setXyzCaching](#refent-setxyzcaching)
-  * [getXyzCaching](#refent-getxyzcaching)
   * [delete](#refent-delete)
   * [getXYZ](#refent-getxyz)
   * [dump](#refent-dump)
+  * [foreach](#refent-foreach)
 * [Usage Examples](#usage-examples)
   * [Example 1](#example-1)
 
@@ -80,25 +79,6 @@ $refEnt getDimensions
 ```
 Returns the multipled IJK point dimensions of the wrapped entity.
 
-### $refEnt getXyzCaching
-```tcl
-$refEnt getXyzCaching
-```
-Returns 1 if xyz caching is enabled for this object.
-
-### $refEnt setXyzCaching
-```Tcl
-$refEnt setXyzCaching onOff
-```
-Enables or disables (default) xyz caching for this object.
-
-where,
-
-`onOff` - One of 0 (off, no, disabled, disable, false), or 1 (on, yes, enabled, enable, true).
-
-
-
-
 ### $refEnt delete
 ```tcl
 $refEnt delete
@@ -120,6 +100,20 @@ where,
 $refEnt dump
 ```
 Dumps various debug information to stdout.
+
+### $refEnt foreach 
+```tcl
+$refEnt foreach ndxVar xyzVar body
+```
+Loops over every grid point in $refEnt. For each point, the vars `ndxVar` and `xyzVar` are set and `body` is invoked. The indices are enumerated with `i` as the outer (slowest) loop and `k` as the inner (fastest) loop.
+
+where,
+
+`ndxVar` - Set to the current grid point's `i` (connector), `{i j}` (domain), or `{i j k}` (block) index.
+
+`xyzVar` - Set to the current grid point's `{x y z}` value.
+
+`body` - The script to execute for each grid point.
 
 
 ## Usage Examples
