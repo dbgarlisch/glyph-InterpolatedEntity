@@ -106,12 +106,19 @@ proc statTableRow { args } {
 proc run { intpEnt pass statsVar } {
   upvar $statsVar stats
   #$intpEnt dump
+  set createPts 0
   set ptCnt 0
+  set isBlkEnt [[$intpEnt getEntity] isOfType pw::Block]
   set start [clock milliseconds]
-  $intpEnt foreach ndx xyz {
+  $intpEnt foreach ndx xyz isDb uvDb {
+    #set isBlkBndry [expr {$isBlkEnt && ![$intpEnt isInteriorIndex $ndx]}]
+    #if { $createPts && ($isDb || $isBlkBndry) } {
+    #  [set dbPt [pw::Point create]] setPoint $xyz
+    #  $dbPt setName "pt($ndx)"
+    #  $dbPt setColor [expr {$isDb ? {#00ff00} : {#008800}}]
+    #  $dbPt setRenderAttribute ColorMode Entity
+    #}
     incr ptCnt
-    #[set dbPt [pw::Point create]] setPoint $xyz
-    #$dbPt setName "pt($ndx)"
   }
   set finish [clock milliseconds]
   set delta [expr {$finish - $start + 1}] ;# dont allow zero
@@ -126,7 +133,7 @@ proc main {} {
   set ents []
   if { [getSelection ents] } {
 
-    set mult 2
+    set mult 3
 
     set stats1 [dict create]
     set stats2 [dict create]
@@ -140,12 +147,13 @@ proc main {} {
       $intpEnt delete
     }
     puts [statTableRow -fill =]
-    set delta [dict get $stats1 DELTA]
+    set delta1 [dict get $stats1 DELTA]
     set ptCnt [dict get $stats1 PTCNT]
-    puts [statMsg TOTAL 1 $delta $ptCnt]
-    set delta [dict get $stats2 DELTA]
+    puts [statMsg TOTAL 1 $delta1 $ptCnt]
+    set delta2 [dict get $stats2 DELTA]
     set ptCnt [dict get $stats2 PTCNT]
-    puts [statMsg TOTAL 2 $delta $ptCnt]
+    puts [statMsg TOTAL 2 $delta2 $ptCnt]
+    puts [format "| ratio: %.1f" [expr {1.0 * $delta1 / $delta2}]]
     puts {}
   }
 }
